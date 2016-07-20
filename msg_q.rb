@@ -65,28 +65,34 @@ if __FILE__ == $PROGRAM_NAME
   message = ""
   message_type = ""
   max_message_length = 255
+  path = '/tmp'
   opt_parser = OptionParser.new do |opts|
     opts.banner = "Usage: ./#{program_name}.rb [OPTIONS]..."
 
-    opts.on("-r", "--receive", "Receive message") do
+    opts.on("-r", "--receive", "Receive message (hash)") do
       message = ""
     end
 
-    opts.on("-s [MESSAGE]", "--send [MESSAGE]", "Send message") do |msg|
+    opts.on("-p [PATH]", "--path [PATH]", "Queue Path (str: /tmp)") do |p|
+      path = p
+    end
+
+    opts.on("-s [MESSAGE]", "--send [MESSAGE]", "Send message (str)") do |msg|
       message = msg
     end
 
-    opts.on("-m [MAX_MESSAGE_LENGTH]", "--max_length [MAX_MESSAGE_LENGTH]", "Max Message Length") do |len|
+    opts.on("-m [MAX_MESSAGE_LENGTH]", "--max_length [MAX_MESSAGE_LENGTH]", "Max Message Length (int)") do |len|
       max_message_length = len.to_i
     end
 
-    opts.on("-t [TYPE]", "--type [TYPE]", "Message Type") do |type_id|
+    opts.on("-t [TYPE]", "--type [TYPE]", "Message Type (int)") do |type_id|
       message_type = type_id.to_i
     end
 
     opts.on("-i [ID]", "--id [ID]", "Server ID") do |s_id|
       server_id = s_id
     end
+
     opts.on_tail("-h", "--help", "This help screen" ) do
       puts opts
       puts %Q(\n    e.g. ./#{program_name}.rb --send "hey how's it going?"; ./#{program_name}.rb --receive)
@@ -95,6 +101,6 @@ if __FILE__ == $PROGRAM_NAME
   end
   opt_parser.parse!
 
-  queue = MsgQ.new('/tmp', server_id)
+  queue = MsgQ.new(path, server_id)
   message.empty? ? p(queue.receive(max_message_length, MsgQ::RECEIVE_TYPE[:first_thing_in_the_queue], MsgQ::IPC_NOWAIT)) : (message_type.empty? ? queue.send(message) : queue.send(type: message_type, msg: message))
 end
