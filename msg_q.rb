@@ -5,6 +5,10 @@
 
 require 'fiddle'
 class MsgQ
+  _tmp_receive_type = Hash.new { |hash, key| key }
+  _tmp_receive_type[:first_thing_in_the_queue] = 0
+  RECEIVE_TYPE = _tmp_receive_type.freeze
+
   LIBC = Fiddle.dlopen('libc.dylib')
   
   IPC_CREAT  = 001000
@@ -54,14 +58,43 @@ end
 
 ###
 
-if __FILE__ == $0
-  queue = MsgQ.new('/tmp', 'A')
-  queue.send type: 2, msg: "test"
-  queue.send type: 3, msg: "test"
-  queue.send type: 4, msg: "test"
-  queue.send "test"
+if __FILE__ == $PROGRAM_NAME
+  require "optparse"
+  program_name = File.basename(__FILE__, ".*")
+  server_id = 'Q_ID_A'
+  message = ""
+  message_type = ""
+  max_message_length = 255
+  opt_parser = OptionParser.new do |opts|
+    opts.banner = "Usage: ./#{program_name}.rb [OPTIONS]..."
 
-  while m = queue.receive(5, 0, MsgQ::IPC_NOWAIT)
-    p m
+    opts.on("-r", "--receive", "Receive message") do
+      message = ""
+    end
+
+    opts.on("-s [MESSAGE]", "--send [MESSAGE]", "Send message") do |msg|
+      message = msg
+    end
+
+    opts.on("-m [MAX_MESSAGE_LENGTH]", "--max_length [MAX_MESSAGE_LENGTH]", "Max Message Length") do |len|
+      max_message_length = len.to_i
+    end
+
+    opts.on("-t [TYPE]", "--type [TYPE]", "Message Type") do |type_id|
+      message_type = type_id.to_i
+    end
+
+    opts.on("-i [ID]", "--id [ID]", "Server ID") do |s_id|
+      server_id = s_id
+    end
+    opts.on_tail("-h", "--help", "This help screen" ) do
+      puts opts
+      puts %Q(\n    e.g. ./#{program_name}.rb --send "hey how's it going?"; ./#{program_name}.rb --receive)
+      exit
+    end
   end
+  opt_parser.parse!
+
+  queue = MsgQ.new('/tmp', server_id)
+  message.empty? ? p(queue.receive(max_message_length, MsgQ::RECEIVE_TYPE[:first_thing_in_the_queue], MsgQ::IPC_NOWAIT)) : (message_type.empty? ? queue.send(message) : queue.send(type: message_type, msg: message))
 end
